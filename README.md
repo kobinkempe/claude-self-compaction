@@ -1,0 +1,52 @@
+# Claude Self-Compaction
+
+A custom Windows Claude Code desktop workflow for choosing a clean compaction point, writing a durable handoff, and resuming work with explicit context re-reads.
+
+![Workflow overview](docs/screenshots/workflow.jpg)
+
+## The engineering problem
+
+Long agent tasks can lose decisions, background-work context and exact file details during compaction. This project makes the boundary explicit: checkpoints prompt the agent to reach a stopping point, a handoff records what matters, and a resuming session re-reads the source files instead of treating a lossy summary as a copy of them.
+
+## Design
+
+```mermaid
+sequenceDiagram
+    participant Hook as Context hook
+    participant Session as Working session
+    participant Worker as Detached worker
+    participant CLI as Bundled Claude CLI
+    participant Relay as Authorized relay session
+    Hook->>Session: Context checkpoint
+    Session->>Session: Finish work and write handoff
+    Session->>Worker: Request after turn ends
+    Worker->>Worker: Check idle state and back up transcript
+    Worker->>CLI: Run built-in compaction on resumed session
+    CLI-->>Worker: Compaction result
+    Worker->>Session: Stop verified session process and children
+    Relay->>Session: Optional authorized continuation
+    Session->>Session: Read handoff and exact context files
+```
+
+The ordering matters: compact before stopping the desktop process, because the app may restart it immediately. Per-session state, stale-request checks, backups and atomic JSON writes support recovery. Optional kept shell tasks need explicit tracking after resume. Full design notes and historical observations are in [docs/ORIGINAL_DESIGN.md](docs/ORIGINAL_DESIGN.md).
+
+## Review without installing
+
+Python 3.10+; the script uses the standard library.
+
+```sh
+python selfcompact.py --help
+python -m unittest discover -s tests
+```
+
+These checks do not compact a real conversation or stop a process. The included tests use only synthetic transcript and process metadata. Live compaction, WMI detachment, process termination and the relay have not been executed during portfolio preparation.
+
+## Installation is explicit
+
+This repository does not install itself. The real workflow changes global hooks and can stop a session's process tree. Read [INSTALL.md](INSTALL.md), set the script path, review the settings fragment, authorize a relay in its own chat if wanted, and test in a disposable session before enabling it broadly. Never copy actual settings.json, transcripts, archived sessions, hook logs or relay state into a public repo.
+
+## Boundaries
+
+This is a custom integration based on observed desktop/CLI behavior, not an official Claude feature. Default thresholds assume a 1M-token context and must be adapted to the chosen model. A message or background task arriving during compaction can race with the old process; the app can display a crash/retry card. The script does not prove that a handoff is complete or that a relay message is authorized. Compatibility with current Claude versions remains to be tested.
+
+The portfolio value is agent lifecycle engineering, durable state, recovery reasoning and a clear separation between operational safeguards and remaining race conditions. [Publication review](PUBLICATION_REVIEW.md).

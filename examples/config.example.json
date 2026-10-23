@@ -1,0 +1,10 @@
+{
+  "relay_session": "REPLACE_WITH_EXPLICITLY_AUTHORIZED_RELAY_SESSION_ID",
+  "checkpoints": [
+    250000,
+    500000,
+    650000,
+    800000,
+    900000
+  ]
+}

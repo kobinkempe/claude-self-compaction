@@ -1,0 +1,44 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/path/to/claude-self-compaction/selfcompact.py\" hook-context"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/path/to/claude-self-compaction/selfcompact.py\" hook-context"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/path/to/claude-self-compaction/selfcompact.py\" hook-stop"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python \"C:/path/to/claude-self-compaction/selfcompact.py\" hook-session-start"
+          }
+        ]
+      }
+    ]
+  }
+}
