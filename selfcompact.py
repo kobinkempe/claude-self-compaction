@@ -387,6 +387,17 @@ def relay_session():
     return config().get("relay_session")
 
 
+def integration_ready(conf):
+    """Automatic operation starts only after the guided setup has been confirmed."""
+    return conf.get("setup_complete") is True and conf.get("enabled") is True
+
+
+def headless_env():
+    env = {k: v for k, v in os.environ.items() if not k.upper().startswith(STRIP_ENV)}
+    env["CLAUDE_CONFIG_DIR"] = str(CONFIG_DIR)
+    return env
+
+
 def off_flags(*ids):
     """The files that switch self-compaction off. The desktop session id comes first: it
     survives a rewind, which forks the conversation under a new CLI session id."""
@@ -448,7 +459,7 @@ def wait_quiet(path):
 
 
 def cmd_request(args):
-    if config().get("enabled") is False:
+    if not integration_ready(config()):
         sys.exit("selfcompact: setup is disabled. Run install.py --configure and confirm both Claude logins and an authorized relay first.")
     session_id = session_arg(args)
     pid = args.pid or os.environ.get("CLAUDE_PID")
@@ -561,7 +572,7 @@ def cmd_hook_context(args):
     if not tokens:
         return
     conf = config()
-    if conf.get("enabled") is False:
+    if not integration_ready(conf):
         return
     reached = max((p for p in conf.get("checkpoints") or CHECKPOINTS if p <= tokens), default=0)
     sdir = state_dir(session)
@@ -586,7 +597,7 @@ def cmd_hook_context(args):
 
 
 def cmd_hook_stop(args):
-    if config().get("enabled") is False:
+    if not integration_ready(config()):
         return
     event = read_hook_event()
     if not event.get("session_id"):
@@ -662,7 +673,7 @@ def cmd_worker(args):
         # Compact while the session's process is still running, idle. Stopping it first fails
         # for a session that is on screen: the app restarts it within a second, and the new
         # process loads the transcript before the compaction is in it.
-        env = {k: v for k, v in os.environ.items() if not k.upper().startswith(STRIP_ENV)}
+        env = headless_env()
         command = [job["exe"], "-p", "--resume", job["session_id"], "--output-format", "json"]
         if job.get("model"):
             command += ["--model", job["model"]]
@@ -726,7 +737,7 @@ def cmd_hook_session_start(args):
     if not session:
         return
     host = os.environ.get("CLAUDE_CODE_HOST_SESSION_ID")  # unset in the worker's headless CLI run
-    if host and config().get("enabled") is False:
+    if host and not integration_ready(config()):
         sys.stdout.write(json.dumps({"hookSpecificOutput": {
             "hookEventName": "SessionStart", "additionalContext":
             "selfcompact: installation is disabled pending setup. Tell the user to sign in to BOTH Claude Desktop and the Claude Code CLI, authorize a separate relay chat with cross-session messaging, and run the installed install.py --configure wizard. Do not request compaction until setup is enabled."}}))
@@ -846,7 +857,7 @@ def cmd_status(args):
     sdir = state_dir(session)
     print(f"session {session} ({sdir})")
     host = os.environ.get("CLAUDE_CODE_HOST_SESSION_ID") if not args.session else None
-    state = "disabled pending installer setup" if config().get("enabled") is False else (
+    state = "disabled pending installer setup" if not integration_ready(config()) else (
         "OFF (selfcompact.py on switches it back on)" if is_off(host, session) else "on")
     print("self-compaction: " + state)
     for name in ("checkpoint.json", "request.json", "job.json", "result.json"):

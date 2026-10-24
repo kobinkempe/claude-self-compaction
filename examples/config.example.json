@@ -1,5 +1,8 @@
 {
-  "relay_session": "REPLACE_WITH_EXPLICITLY_AUTHORIZED_RELAY_SESSION_ID",
+  "setup_complete": false,
+  "enabled": false,
+  "context_window_tokens": 1000000,
+  "relay_session": null,
   "checkpoints": [
     250000,
     500000,

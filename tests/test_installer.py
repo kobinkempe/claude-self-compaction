@@ -78,6 +78,18 @@ class InstallerChecks(unittest.TestCase):
             with self.assertRaises(SystemExit): sc.cmd_request(None)
             sc.cmd_hook_stop(None)
 
+    def test_manual_copy_without_onboarding_cannot_request_compaction(self):
+        with patch.object(sc, "config", return_value={}), patch.object(sc, "session_arg", side_effect=AssertionError("must stop before session operations")):
+            with self.assertRaises(SystemExit): sc.cmd_request(None)
+            sc.cmd_hook_stop(None)
+
+    def test_headless_cli_keeps_the_selected_login_profile(self):
+        with patch.object(sc, "CONFIG_DIR", Path("C:/synthetic profile")), patch.dict(sc.os.environ, {"CLAUDE_PID": "fake", "ANTHROPIC_API_KEY": "synthetic-secret"}):
+            env = sc.headless_env()
+        self.assertEqual(env["CLAUDE_CONFIG_DIR"], str(Path("C:/synthetic profile")))
+        self.assertNotIn("CLAUDE_PID", env)
+        self.assertNotIn("ANTHROPIC_API_KEY", env)
+
     def test_disabled_setup_is_explained_at_session_start(self):
         out = io.StringIO()
         with patch.object(sc, "config", return_value={"enabled": False}), patch.object(sc, "read_hook_event", return_value={"session_id": "fake", "source": "startup"}), patch.dict(sc.os.environ, {"CLAUDE_CODE_HOST_SESSION_ID": "fake-host"}), contextlib.redirect_stdout(out):
