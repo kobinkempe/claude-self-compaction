@@ -6,7 +6,6 @@
 
 A custom Windows Claude Code desktop workflow that gives a long-running agent control over when it compacts, so its human operator does not have to supervise context resets.
 
-![Workflow overview](docs/screenshots/workflow.jpg)
 
 ## The business case: remove a supervision bottleneck
 
@@ -55,9 +54,15 @@ python -m unittest discover -s tests
 
 These checks do not compact a real conversation or stop a process. The included tests use only synthetic transcript and process metadata. Live compaction, WMI detachment, process termination and the relay have not been executed during portfolio preparation.
 
-## Installation is explicit
+## Download and guided installation
 
-This repository does not install itself. The real workflow changes global hooks and can stop a session's process tree. Read [INSTALL.md](INSTALL.md), set the script path, review the settings fragment, authorize a relay in its own chat if wanted, and test in a disposable session before enabling it broadly. Never copy actual settings.json, transcripts, archived sessions, hook logs or relay state into a public repo.
+[Download the Windows install package](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/downloads/claude-self-compaction-windows.zip). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
+
+The wizard explains the 1M-context defaults (250K at a hard pivot, ordinary work around 500K, later checkpoints for context-heavy work), then asks whether to change thresholds, rules or handoff preferences. It generates both the runtime JSON policy and the installed SKILL.md from the same choices. Re-run it with `--configure` to change them later.
+
+**Sign in to BOTH Claude Desktop and the Claude Code CLI.** Desktop login alone is insufficient. **Set up a separate, explicitly authorized relay chat with Desktop cross-session messaging** for automatic continuation. The installer explains both requirements and leaves the integration disabled if setup is deferred. GitHub CLI login is not required to use the ZIP.
+
+The wizard preserves unrelated hooks/settings and creates backups. It never compacts, stops a process or sends a message during installation. Read the [step-by-step installation guide](INSTALL.md) for relay setup, testing, customization and rollback. This remains a custom Windows Desktop integration; a terminal-only skill does not supply its process and messaging capabilities.
 
 ## Boundaries
 

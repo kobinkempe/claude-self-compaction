@@ -83,8 +83,8 @@ CHECKPOINT_ADVICE = {
              "rather than search it, may you wait for the 800k note.",
     800_000: "Whatever the task, start wrapping up now: reach a clean stopping point, write the handoff "
              "and compact.",
-    900_000: "Compact at the very next stopping point. At about 970k tokens Claude Code compacts "
-             "automatically, without your handoff.",
+    900_000: "Compact at the very next clean stopping point. Leave headroom for automatic compaction; "
+             "the actual threshold varies by model and version.",
 }
 TAIL_CHUNK = 1 << 20        # bytes read at a time from the end of a transcript
 TAIL_LIMIT = 64 << 20       # never read further back than this
@@ -411,8 +411,12 @@ def describe(items):
     return "; ".join(out)
 
 
-def checkpoint_note(point, tokens):
-    advice = CHECKPOINT_ADVICE.get(point, "Look for a good place to wrap up, write the handoff and compact.")
+def checkpoint_note(point, tokens, conf=None):
+    conf = config() if conf is None else conf
+    advice = conf.get("checkpoint_advice", {}).get(str(point)) or CHECKPOINT_ADVICE.get(
+        point, "Look for a good place to wrap up, write the handoff and compact.")
+    if conf.get("additional_instructions"):
+        advice += " Additional preferences: " + conf["additional_instructions"]
     return (f"selfcompact checkpoint: your context has passed {point // 1000}k tokens (now about "
             f"{tokens // 1000}k). {advice} Never compact mid-edit, and the user's own instructions come "
             "first. See \"Checkpoints\" in the self-compact skill; this note comes once per checkpoint.")
@@ -444,6 +448,8 @@ def wait_quiet(path):
 
 
 def cmd_request(args):
+    if config().get("enabled") is False:
+        sys.exit("selfcompact: setup is disabled. Run install.py --configure and confirm both Claude logins and an authorized relay first.")
     session_id = session_arg(args)
     pid = args.pid or os.environ.get("CLAUDE_PID")
     exe = os.environ.get("CLAUDE_CODE_EXECPATH")
@@ -555,6 +561,8 @@ def cmd_hook_context(args):
     if not tokens:
         return
     conf = config()
+    if conf.get("enabled") is False:
+        return
     reached = max((p for p in conf.get("checkpoints") or CHECKPOINTS if p <= tokens), default=0)
     sdir = state_dir(session)
     state_file = sdir / "checkpoint.json"
@@ -574,10 +582,12 @@ def cmd_hook_context(args):
     log(sdir, {"event": "checkpoint", "checkpoint": reached, "tokens": tokens})
     sys.stdout.write(json.dumps({"hookSpecificOutput": {
         "hookEventName": event.get("hook_event_name") or "PostToolUse",
-        "additionalContext": checkpoint_note(reached, tokens)}}))
+        "additionalContext": checkpoint_note(reached, tokens, conf)}}))
 
 
 def cmd_hook_stop(args):
+    if config().get("enabled") is False:
+        return
     event = read_hook_event()
     if not event.get("session_id"):
         return
@@ -716,6 +726,11 @@ def cmd_hook_session_start(args):
     if not session:
         return
     host = os.environ.get("CLAUDE_CODE_HOST_SESSION_ID")  # unset in the worker's headless CLI run
+    if host and config().get("enabled") is False:
+        sys.stdout.write(json.dumps({"hookSpecificOutput": {
+            "hookEventName": "SessionStart", "additionalContext":
+            "selfcompact: installation is disabled pending setup. Tell the user to sign in to BOTH Claude Desktop and the Claude Code CLI, authorize a separate relay chat with cross-session messaging, and run the installed install.py --configure wizard. Do not request compaction until setup is enabled."}}))
+        return
     off = None
     if host and source in ("compact", "resume") and is_off(host, session):
         # The user compacts this session by hand; a compaction must not lose that.
@@ -831,7 +846,9 @@ def cmd_status(args):
     sdir = state_dir(session)
     print(f"session {session} ({sdir})")
     host = os.environ.get("CLAUDE_CODE_HOST_SESSION_ID") if not args.session else None
-    print("self-compaction: " + ("OFF (selfcompact.py on switches it back on)" if is_off(host, session) else "on"))
+    state = "disabled pending installer setup" if config().get("enabled") is False else (
+        "OFF (selfcompact.py on switches it back on)" if is_off(host, session) else "on")
+    print("self-compaction: " + state)
     for name in ("checkpoint.json", "request.json", "job.json", "result.json"):
         path = sdir / name
         if path.exists():
