@@ -16,7 +16,7 @@ Claude could not invoke compaction at a point it chose. That left two operationa
 
 This skill gives the agent explicit control over that boundary. It chooses a convenient stopping point, preserves important state in a handoff, performs compaction, re-reads the necessary context, and resumes its own plan. Context management becomes part of the agent's work instead of a recurring human monitoring task.
 
-**Outcome in the author's use:** this enabled a multi-week task to run entirely unsupervised, with the agent compacting itself without losing important context. This is the author's reported project outcome, not a general reliability benchmark across models or desktop versions.
+**Outcome in my use:** this enabled a multi-week task to run entirely unsupervised, with the agent compacting itself without losing important context.
 
 ## What preserves continuity
 
