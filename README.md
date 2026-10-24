@@ -1,16 +1,16 @@
 # Claude Self-Compaction
 
-## Public demo
+## Project explanation
 
-[Open the live demo](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/claude-self-compaction/) · [Read the case study](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/case-studies/claude-self-compaction/)
-
-The public page is a labeled workflow simulation; the complete tool runs in its intended local environment.
+[Read the case study](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/case-studies/claude-self-compaction/)
 
 A custom Windows Claude Code desktop workflow that gives a long-running agent control over when it compacts, so its human operator does not have to supervise context resets.
 
 ![Workflow overview](docs/screenshots/workflow.jpg)
 
 ## The business case: remove a supervision bottleneck
+
+> AI can do so much. Why can’t it decide when to compact, what context to preserve, and how to hand off its own work?
 
 Claude could not invoke compaction at a point it chose. That left two operational choices: watch a long-running task and manually tell it when to compact, or let automatic compaction happen at a token threshold that might fall in the middle of work that depended on the current context.
 
@@ -64,13 +64,3 @@ This repository does not install itself. The real workflow changes global hooks 
 This is a custom integration based on observed desktop/CLI behavior, not an official Claude feature. Default thresholds assume a 1M-token context and must be adapted to the chosen model. A message or background task arriving during compaction can race with the old process; the app can display a crash/retry card. The script does not prove that a handoff is complete or that a relay message is authorized. Compatibility with current Claude versions remains to be tested.
 
 The portfolio contribution is removing a human supervision bottleneck from long-running agent work through explicit compaction control, durable state and recovery. [Publication review](PUBLICATION_REVIEW.md).
-
-## Browser demo source
-
-The standalone portfolio demo is in `demo/`. To try it locally, run:
-
-```sh
-python -m http.server 8000 --bind 127.0.0.1 --directory demo
-```
-
-Open http://127.0.0.1:8000.
