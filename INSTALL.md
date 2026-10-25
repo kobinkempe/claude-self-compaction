@@ -4,13 +4,13 @@ This is the original custom **Claude Desktop Code on Windows** integration. A sk
 
 ## 1. Download and open the wizard
 
-[Download the installer ZIP](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/downloads/claude-self-compaction-windows.zip), extract it, then double-click **INSTALL.cmd**. Alternatively run `python install.py` from the extracted folder. Python 3.10+ is required. A download does not run code or install itself.
+[Download the installer ZIP from GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.1.0/claude-self-compaction-windows.zip), extract it, then double-click **INSTALL.cmd**. The [release page](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.1.0) also includes a SHA-256 checksum. Alternatively run `python install.py` from the extracted folder. Python 3.10+ is required. A download does not run code or install itself.
 
 ## 2. Sign in to BOTH Claude surfaces
 
 - Sign in to **Claude Desktop**, and use its Code mode for the working and relay chats.
 - Sign in to the **Claude Code CLI** separately: run `claude auth login`, or start `claude` and type `/login`. Run `claude auth status` to check the CLI account. Verify that the bundled CLI used by Desktop can use this local login too. Use the same local user/config profile; a WSL or remote login is not evidence that the Windows bundled CLI is signed in.
-- Desktop login alone is insufficient: a detached CLI process performs the actual compaction. The installer never handles login credentials. GitHub CLI login is only useful if you choose to clone the private repository with `gh`; the downloadable package and compaction do not require it.
+- Desktop login alone is insufficient: a detached CLI process performs the actual compaction. The installer never handles login credentials. GitHub CLI login is optional for repository workflows; the downloadable package and compaction do not require it.
 
 ## 3. Review or change the policy
 

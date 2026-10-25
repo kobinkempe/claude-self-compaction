@@ -56,7 +56,7 @@ These checks do not compact a real conversation or stop a process. The included 
 
 ## Download and guided installation
 
-[Download the Windows install package](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/downloads/claude-self-compaction-windows.zip). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
+[Download the Windows install package](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.1.0/claude-self-compaction-windows.zip) from [GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.1.0). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
 
 The wizard explains the 1M-context defaults (250K at a hard pivot, ordinary work around 500K, later checkpoints for context-heavy work), then asks whether to change thresholds, rules or handoff preferences. It generates both the runtime JSON policy and the installed SKILL.md from the same choices. Re-run it with `--configure` to change them later.
 
@@ -68,4 +68,4 @@ The wizard preserves unrelated hooks/settings and creates backups. It never comp
 
 This is a custom integration based on observed desktop/CLI behavior, not an official Claude feature. Default thresholds assume a 1M-token context and must be adapted to the chosen model. A message or background task arriving during compaction can race with the old process; the app can display a crash/retry card. The script does not prove that a handoff is complete or that a relay message is authorized. Compatibility with current Claude versions remains to be tested.
 
-The portfolio contribution is removing a human supervision bottleneck from long-running agent work through explicit compaction control, durable state and recovery. [Publication review](PUBLICATION_REVIEW.md).
+The portfolio contribution is removing a human supervision bottleneck from long-running agent work through explicit compaction control, durable state and recovery.
