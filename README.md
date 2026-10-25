@@ -17,6 +17,8 @@ This skill gives the agent explicit control over that boundary. It chooses a con
 
 **Outcome in my use:** this enabled a multi-week task to run entirely unsupervised, with the agent compacting itself without losing important context.
 
+That task supported [bound.less](https://github.com/kobinkempe/bound.less-kk): reviewing and hardening an already-built custom rasterizer that was initially brittle, then analyzing, researching and implementing performance improvements. Compaction control let the agent choose a coherent stopping point between steps and carry its plan forward through repeated context resets.
+
 ## What preserves continuity
 
 Checkpoints help the agent plan ahead without forcing an immediate reset. The handoff records the goal, decisions, current state, background work and exact files to re-read. The resumed agent uses those source files rather than treating a lossy summary as a copy of them.
