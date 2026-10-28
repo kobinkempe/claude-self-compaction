@@ -2,7 +2,7 @@
 
 ## Project explanation
 
-[Read the case study](https://kobinkempe.pages.dev/case-studies/claude-self-compaction/)
+[See project details](https://kobinkempe.pages.dev/projects/claude-self-compaction/)
 
 A custom Windows Claude Code desktop workflow that gives a long-running agent control over when it compacts, so its human operator does not have to supervise context resets.
 
@@ -27,23 +27,29 @@ Checkpoints help the agent plan ahead without forcing an immediate reset. The ha
 
 ```mermaid
 sequenceDiagram
-    participant Hook as Context hook
+    participant Hooks as Hooks (context, Stop, SessionStart)
     participant Session as Working session
+    participant Relay as Relay session (optional)
     participant Worker as Detached worker
     participant CLI as Bundled Claude CLI
-    participant Relay as Authorized relay session
-    Hook->>Session: Context checkpoint
-    Session->>Session: Finish work and write handoff
-    Session->>Worker: Request after turn ends
-    Worker->>Worker: Check idle state and back up transcript
-    Worker->>CLI: Run built-in compaction on resumed session
-    CLI-->>Worker: Compaction result
-    Worker->>Session: Stop verified session process and children
-    Relay->>Session: Optional authorized continuation
-    Session->>Session: Read handoff and exact context files
+    participant App as Claude desktop app
+    Hooks->>Session: Context checkpoint
+    Session->>Session: Finish the step, write the handoff, record the request
+    Session-->>Relay: Hand over the relay job
+    Note over Session: Turn ends
+    Hooks->>Worker: Stop hook starts the worker outside the session
+    Worker->>Worker: Wait for the transcript to go quiet, back it up
+    Worker->>CLI: claude -p --resume (session) "/compact (focus)"
+    CLI-->>Worker: Compaction written into the transcript
+    Worker->>Session: Stop the session process and its children
+    Relay->>Relay: Wait for the worker to finish
+    Relay-->>Session: Message to carry on
+    App->>Session: Resume from the compacted transcript
+    Hooks->>Session: SessionStart hook reports the compaction
+    Session->>Session: Read the handoff and context files, continue
 ```
 
-The ordering matters: compact before stopping the desktop process, because the app may restart it immediately. Per-session state, stale-request checks, backups and atomic JSON writes support recovery. Optional kept shell tasks need explicit tracking after resume. Full design notes and historical observations are in [docs/ORIGINAL_DESIGN.md](docs/ORIGINAL_DESIGN.md).
+The ordering matters: compact before stopping the desktop process, because the app may restart it immediately. The app resumes the session from the compacted transcript right away if it is on screen, otherwise when the next message (such as the relay's) arrives. Per-session state, stale-request checks, backups and atomic JSON writes support recovery. Optional kept shell tasks need explicit tracking after resume. Full design notes and historical observations are in [docs/ORIGINAL_DESIGN.md](docs/ORIGINAL_DESIGN.md).
 
 ## Review without installing
 
