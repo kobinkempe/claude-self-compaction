@@ -2,14 +2,14 @@
 
 ## Project explanation
 
-[Read the case study](https://kobin-ai-portfolio.kobinkempe.chatgpt.site/case-studies/claude-self-compaction/)
+[Read the case study](https://kobinkempe.pages.dev/case-studies/claude-self-compaction/)
 
 A custom Windows Claude Code desktop workflow that gives a long-running agent control over when it compacts, so its human operator does not have to supervise context resets.
 
 
 ## The business case: remove a supervision bottleneck
 
-> AI can do so much. Why can’t it decide when to compact, what context to preserve, and how to hand off its own work?
+> Claude Code can’t choose when to compact its own context. This tool lets the agent pick a clean stopping point, save what it needs and carry on by itself.
 
 Claude could not invoke compaction at a point it chose. That left two operational choices: watch a long-running task and manually tell it when to compact, or let automatic compaction happen at a token threshold that might fall in the middle of work that depended on the current context.
 
@@ -54,7 +54,7 @@ python selfcompact.py --help
 python -m unittest discover -s tests
 ```
 
-These checks do not compact a real conversation or stop a process. The included tests use only synthetic transcript and process metadata. Live compaction, WMI detachment, process termination and the relay have not been executed during portfolio preparation.
+These checks do not compact a real conversation or stop a process; the included tests use only synthetic transcript and process metadata. The full workflow, including live compaction, process handling and the relay, is in regular use in my own Claude desktop sessions on Windows.
 
 ## Download and guided installation
 
@@ -68,6 +68,6 @@ The wizard preserves unrelated hooks/settings and creates backups. It never comp
 
 ## Boundaries
 
-This is a custom integration based on observed desktop/CLI behavior, not an official Claude feature. Default thresholds assume a 1M-token context and must be adapted to the chosen model. A message or background task arriving during compaction can race with the old process; the app can display a crash/retry card. The script does not prove that a handoff is complete or that a relay message is authorized. Compatibility with current Claude versions remains to be tested.
+This is a custom integration based on observed desktop/CLI behavior, not an official Claude feature. Default thresholds assume a 1M-token context and must be adapted to the chosen model. A message or background task arriving during compaction can race with the old process; the app can display a crash/retry card. The script does not prove that a handoff is complete or that a relay message is authorized. It works with the current Claude desktop app and CLI; future app updates could change the behavior it relies on.
 
 The portfolio contribution is removing a human supervision bottleneck from long-running agent work through explicit compaction control, durable state and recovery.
