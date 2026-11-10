@@ -4,7 +4,7 @@ This is the original custom **Claude Desktop Code on Windows** integration. A sk
 
 ## 1. Download and open the wizard
 
-[Download the installer ZIP from GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.2.0/claude-self-compaction-windows.zip), extract it, then double-click **INSTALL.cmd**. The [release page](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.2.0) also includes a SHA-256 checksum. Alternatively run `python install.py` from the extracted folder. Python 3.10+ is required. A download does not run code or install itself.
+[Download the installer ZIP from GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/latest/download/claude-self-compaction-windows.zip), extract it, then double-click **INSTALL.cmd**. The [release page](https://github.com/kobinkempe/claude-self-compaction/releases/latest) also includes a SHA-256 checksum. Alternatively run `python install.py` from the extracted folder. Python 3.10+ is required. A download does not run code or install itself.
 
 ## 2. Sign in to BOTH Claude surfaces
 

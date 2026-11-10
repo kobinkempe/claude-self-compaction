@@ -64,7 +64,7 @@ These checks do not compact a real conversation or stop a process; the included 
 
 ## Download and guided installation
 
-[Download the Windows install package](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.2.0/claude-self-compaction-windows.zip) from [GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.2.0). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
+[Download the Windows install package](https://github.com/kobinkempe/claude-self-compaction/releases/latest/download/claude-self-compaction-windows.zip) from [GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/latest). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
 
 The wizard explains the 1M-context defaults (250K at a hard pivot, ordinary work around 500K, later checkpoints for context-heavy work), then asks whether to change thresholds, rules or handoff preferences. It generates both the runtime JSON policy and the installed SKILL.md from the same choices. Re-run it with `--configure` to change them later.
 
