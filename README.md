@@ -29,7 +29,7 @@ Checkpoints help the agent plan ahead without forcing an immediate reset. The ha
 sequenceDiagram
     participant Hooks as Hooks (context, Stop, SessionStart)
     participant Session as Working session
-    participant Relay as Relay session (optional)
+    participant Relay as Relay session
     participant Worker as Detached worker
     participant CLI as Bundled Claude CLI
     participant App as Claude desktop app
@@ -43,13 +43,13 @@ sequenceDiagram
     CLI-->>Worker: Compaction written into the transcript
     Worker->>Session: Stop the session process and its children
     Relay->>Relay: Wait for the worker to finish
-    Relay-->>Session: Message to carry on
+    Relay-->>Session: Message to carry on, or to report back
     App->>Session: Resume from the compacted transcript
     Hooks->>Session: SessionStart hook reports the compaction
-    Session->>Session: Read the handoff and context files, continue
+    Session->>Session: Continue from the handoff, or post "Compaction complete" and wait
 ```
 
-The ordering matters: compact before stopping the desktop process, because the app may restart it immediately. The app resumes the session from the compacted transcript right away if it is on screen, otherwise when the next message (such as the relay's) arrives. Per-session state, stale-request checks, backups and atomic JSON writes support recovery. Optional kept shell tasks need explicit tracking after resume. Full design notes and historical observations are in [docs/ORIGINAL_DESIGN.md](docs/ORIGINAL_DESIGN.md).
+The ordering matters: compact before stopping the desktop process, because the app may restart it immediately. The app resumes the session from the compacted transcript right away if it is on screen, otherwise when the next message (such as the relay's) arrives. The relay's message does one of two things, chosen by the agent when it requests the compaction: tell it to carry on with the next step (`--then`), or tell it to post "Compaction complete." with a short status and wait for the user (`--report`). Per-session state, stale-request checks, backups and atomic JSON writes support recovery. Optional kept shell tasks need explicit tracking after resume. Full design notes and historical observations are in [docs/ORIGINAL_DESIGN.md](docs/ORIGINAL_DESIGN.md).
 
 ## Review without installing
 
@@ -64,11 +64,11 @@ These checks do not compact a real conversation or stop a process; the included 
 
 ## Download and guided installation
 
-[Download the Windows install package](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.1.0/claude-self-compaction-windows.zip) from [GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.1.0). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
+[Download the Windows install package](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.2.0/claude-self-compaction-windows.zip) from [GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.2.0). Extract it and run **INSTALL.cmd** (Python 3.10+), or run `python install.py`. Nothing runs merely by downloading.
 
 The wizard explains the 1M-context defaults (250K at a hard pivot, ordinary work around 500K, later checkpoints for context-heavy work), then asks whether to change thresholds, rules or handoff preferences. It generates both the runtime JSON policy and the installed SKILL.md from the same choices. Re-run it with `--configure` to change them later.
 
-**Sign in to BOTH Claude Desktop and the Claude Code CLI.** Desktop login alone is insufficient. **Set up a separate, explicitly authorized relay chat with Desktop cross-session messaging** for automatic continuation. The installer explains both requirements and leaves the integration disabled if setup is deferred. GitHub CLI login is not required to use the ZIP.
+**Sign in to BOTH Claude Desktop and the Claude Code CLI.** Desktop login alone is insufficient. **Set up a separate, explicitly authorized relay chat with Desktop cross-session messaging.** The relay is required: compacting stops the session's process, and only a message wakes it again. Without the relay, the session would sit stopped until you opened or typed in it in the desktop app. Remote Control couldn't reach it, and nothing would tell you whether the compaction worked. The installer explains both requirements and leaves the integration disabled if setup is deferred. GitHub CLI login is not required to use the ZIP.
 
 The wizard preserves unrelated hooks/settings and creates backups. It never compacts, stops a process or sends a message during installation. Read the [step-by-step installation guide](INSTALL.md) for relay setup, testing, customization and rollback. This remains a custom Windows Desktop integration; a terminal-only skill does not supply its process and messaging capabilities.
 

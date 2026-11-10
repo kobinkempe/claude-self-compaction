@@ -4,7 +4,7 @@ This is the original custom **Claude Desktop Code on Windows** integration. A sk
 
 ## 1. Download and open the wizard
 
-[Download the installer ZIP from GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.1.0/claude-self-compaction-windows.zip), extract it, then double-click **INSTALL.cmd**. The [release page](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.1.0) also includes a SHA-256 checksum. Alternatively run `python install.py` from the extracted folder. Python 3.10+ is required. A download does not run code or install itself.
+[Download the installer ZIP from GitHub Releases](https://github.com/kobinkempe/claude-self-compaction/releases/download/v0.2.0/claude-self-compaction-windows.zip), extract it, then double-click **INSTALL.cmd**. The [release page](https://github.com/kobinkempe/claude-self-compaction/releases/tag/v0.2.0) also includes a SHA-256 checksum. Alternatively run `python install.py` from the extracted folder. Python 3.10+ is required. A download does not run code or install itself.
 
 ## 2. Sign in to BOTH Claude surfaces
 
@@ -30,7 +30,9 @@ Enter your model's real context window. The wizard proposes proportionally lower
 
 Both **config.json** and the actual installed **SKILL.md** are generated from your choices. The hooks read the same thresholds and rules. Run the installed `install.py --configure` wizard to change them later (or ask Claude to help you run `/self-compact configure`). Editing only the skill or only the JSON can make them disagree.
 
-## 4. Set up a relay for automatic continuation
+## 4. Set up the relay (required)
+
+Compacting stops the working chat's process, and only a message wakes it again. The relay sends that message, so the chat either carries on with its next step or posts "Compaction complete." with a short status and waits for you. Without a relay, a compacted chat stays stopped until you open it or type in it in the desktop app: Remote Control can't reach it, and nothing tells you whether the compaction worked. That is why the integration stays disabled until a relay is set up.
 
 Create a **separate Claude Desktop Code chat**, explicitly authorize it to serve as your compaction relay, and give it the installed skill's **If you are the relay** instructions. The chat needs Bash and the Desktop cross-session `send_message` tool. An ordinary subagent or terminal-only chat is not a substitute; the messaging integration is not bundled here.
 

@@ -18,9 +18,12 @@ the session's process is gone. So:
   4. The app resumes the session from the transcript (at once if it is on screen, otherwise
      on the next message), and the session continues from the compaction summary. The
      desktop view keeps showing the full history.
-  5. Optionally, a relay session sends the session a message so it carries on by itself:
-     the session hands the relay its job just before its turn ends, and the relay runs
-     `relay`, which waits for the worker and prints the message to send.
+  5. A relay session sends the session a message that wakes it: the session hands the relay
+     its job just before its turn ends, and the relay runs `relay`, which waits for the worker
+     and prints the message to send. With `--then`, the message says what to carry on with;
+     with `--report`, the session posts "Compaction complete. <status>" and waits for the user.
+     Without either, nothing wakes the session until the user opens it or writes to it in the
+     desktop app, and Remote Control can't reach it in the meantime.
 
 Sessions don't watch their own context: `hook-context` (PostToolUse and UserPromptSubmit)
 tells a session once when its context passes each checkpoint (250k, 500k, 650k, 800k and
@@ -36,7 +39,7 @@ registered in the user settings, so this works in every project. The earlier rou
 
 Usage:
   python selfcompact.py handoff-path                           (where to write the handoff)
-  python selfcompact.py request [--handoff PATH] [--focus TEXT] [--then TEXT] [--keep TASK_ID ...]
+  python selfcompact.py request [--handoff PATH] [--focus TEXT] [--then TEXT | --report TEXT] [--keep TASK_ID ...]
   python selfcompact.py cancel
   python selfcompact.py off | on                 (switch self-compaction off or on for this session)
   python selfcompact.py status [--session ID]
@@ -475,11 +478,13 @@ def cmd_request(args):
     sdir = state_dir(session_id)
     host = None if args.session else os.environ.get("CLAUDE_CODE_HOST_SESSION_ID")
     relay = relay_session()
-    if args.then and not (relay and host):
-        sys.exit("selfcompact: --then needs a relay session (relay_session in "
+    wake = args.then or args.report
+    flag = "--then" if args.then else "--report"
+    if wake and not (relay and host):
+        sys.exit(f"selfcompact: {flag} needs a relay session (relay_session in "
                  f"{HOME / 'config.json'}) and a desktop session to message back; not requesting")
-    if args.then and host == relay:
-        sys.exit("selfcompact: this is the relay session, which can't message itself; request without --then")
+    if wake and host == relay:
+        sys.exit(f"selfcompact: this is the relay session, which can't message itself; request without {flag}")
     handoff = Path(args.handoff).resolve() if args.handoff else None
     if handoff and not handoff.is_file():
         sys.exit(f"selfcompact: no handoff document at {handoff}; write it first, then request")
@@ -502,6 +507,7 @@ def cmd_request(args):
         "model": session_model(entries),
         "focus": args.focus or "",
         "then": args.then or "",
+        "report": args.report or "",
         "handoff": str(handoff) if handoff else "",
         "keep": keep,
         "tasks_dir": str(tasks_dir),
@@ -510,7 +516,7 @@ def cmd_request(args):
     write_json(sdir / "request.json", request)
     log(sdir, {"event": "request", "session": session_id, "pid": int(pid),
                "context_tokens": request["context_tokens_before"], "focus": bool(args.focus),
-               "then": bool(args.then), "handoff": bool(handoff), "keep": keep})
+               "then": bool(args.then), "report": bool(args.report), "handoff": bool(handoff), "keep": keep})
     print(f"requested: compaction of session {session_id} (process {pid}, "
           f"~{request['context_tokens_before'] or 0:,} tokens) starts when this turn ends.\n"
           "`selfcompact.py cancel` withdraws the request before then.")
@@ -522,8 +528,15 @@ def cmd_request(args):
         print(f"\nAs your last action, send this message to the relay session {relay} with "
               "send_message, then end your turn. Tell the user you will continue by yourself "
               "in about a minute and they need not reply.\n\n" + relay_job(request))
+    elif args.report:
+        print(f"\nAs your last action, send this message to the relay session {relay} with "
+              "send_message, then end your turn. Tell the user that in about a minute you will post "
+              "\"Compaction complete\" with a short status, and to wait for it before replying.\n\n"
+              + relay_job(request))
     else:
-        print("Tell the user to wait about a minute before sending the next message.")
+        print("No relay will wake this session. Tell the user to wait about a minute, then open this chat "
+              "in the desktop app or send a message there to restart it; Remote Control can't reach it "
+              "until then, and no confirmation will be posted.")
 
 
 def cmd_cancel(args):
@@ -638,7 +651,7 @@ def cmd_worker(args):
     result_file = sdir / "result.json"
     result = {"session": job["session_id"], "ok": False, "requested": job["created"],
               "host_session": job.get("host_session"), "then": job.get("then") or "",
-              "handoff": job.get("handoff") or ""}
+              "report": job.get("report") or "", "handoff": job.get("handoff") or ""}
 
     def save(detail, **extra):
         result.update(detail=detail, finished=utcnow().isoformat(),
@@ -652,7 +665,7 @@ def cmd_worker(args):
         save(detail, **extra)
         (sdir / "archive").mkdir(exist_ok=True)
         job_file.replace(sdir / "archive" / f"{utcnow():%Y%m%d-%H%M%S}-job.json")
-        log(sdir, {"event": "worker", **{k: v for k, v in result.items() if k not in ("announced", "then")}})
+        log(sdir, {"event": "worker", **{k: v for k, v in result.items() if k not in ("announced", "then", "report")}})
 
     try:
         transcript = Path(job["transcript"])
@@ -796,6 +809,13 @@ def cmd_hook_session_start(args):
                 note += (" Before compacting you asked the relay session to send you a continuation. A message "
                          "from it that starts with `selfcompact relay:` is that continuation: the text after "
                          "`Continue:` is what you wrote then. Carry on with it without waiting for the user.")
+            elif result.get("report"):
+                note += (" Before compacting you asked the relay session to wake you so you can tell the user "
+                         "how it went. A message from it that starts with `selfcompact relay:` is that wake-up. "
+                         "Answer it with one short message and nothing else, then end your turn: if the "
+                         "compaction finished, write `Compaction complete. ` followed by the text after "
+                         "`Report:`; if it did not, write `Compaction failed (<the reason>). ` followed by that "
+                         "text. Don't read files or start other work first; do that when the user next writes.")
             result["announced"] = True
             write_json(result_file, result)
     log(sdir, {"event": "SessionStart", "source": source, "session": session, "host": host,
@@ -842,6 +862,10 @@ def cmd_relay(args):
         message += f" Handoff: {result['handoff']}."
     if result.get("then"):
         message += f" Continue: {result['then']}"
+    elif result.get("report"):
+        message += (f" Report: {result['report']} (Reply to the user with one short message that starts "
+                    "\"Compaction complete.\" or, if it did not happen, \"Compaction failed\" with the reason; "
+                    "then end your turn.)")
     write_json(sdir / "relayed.json", {"requested": args.request, "at": utcnow().isoformat()})
     log(sdir, {"event": "relay", "session": result.get("session"), "to": to, "ok": result.get("ok")})
     print(f"SEND\nTO: {to}\nMESSAGE: {message}")
@@ -877,7 +901,10 @@ def main():
     request = sub.add_parser("request", help="compact this session when the current turn ends")
     request.add_argument("--focus", help="instructions for the summary, passed as /compact <focus>")
     request.add_argument("--pid", help="its process id (default: $CLAUDE_PID)")
-    request.add_argument("--then", help="what to do after the compaction; the relay session sends it back")
+    wake = request.add_mutually_exclusive_group()
+    wake.add_argument("--then", help="what to do after the compaction; the relay session sends it back")
+    wake.add_argument("--report", help="a short status to post after the compaction (\"Compaction complete. "
+                      "<status>\"), then stop and wait for the user; delivered through the relay session")
     request.add_argument("--handoff", help="the handoff document the resumed session reads first")
     request.add_argument("--keep", action="append", metavar="TASK_ID",
                          help="a background shell command to leave running (repeatable); all others are stopped")

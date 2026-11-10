@@ -6,7 +6,7 @@ description: Choose a clean compaction boundary in a Windows Claude Desktop Code
 
 # Self-compact
 
-Only the user can type `/compact`, and compacting your transcript file does nothing while your process runs, because the process holds the conversation in memory. But the desktop app reloads a session from its transcript when the session's process is gone. `selfcompact.py` uses that: after your turn, it compacts your transcript with the bundled CLI (`claude -p --resume <id> "/compact"`), then stops your process, and the app resumes you from the compaction. The user still sees the full history; your context continues from the summary.
+Only the user can type `/compact`, and compacting your transcript file does nothing while your process runs, because the process holds the conversation in memory. But the desktop app reloads a session from its transcript when the session's process is gone. `selfcompact.py` uses that: after your turn, it compacts your transcript with the bundled CLI (`claude -p --resume <id> "/compact"`), then stops your process, and the relay session wakes you so the app resumes you from the compaction. The user still sees the full history; your context continues from the summary.
 
 In the commands below, `selfcompact.py` means `python "<absolute-path-to-this-repository>/selfcompact.py"`. The README in that folder explains the design. The hooks are in `~/.claude/settings.json`, so this works in every project, but only in the desktop app on Windows. State lives in `~/.claude/selfcompact/`.
 
@@ -51,7 +51,7 @@ Never compact mid-edit. The user's explicit compaction plan takes precedence whi
 The user's instructions about when to compact replace the checkpoints. For example, "do A, then compact, then do B, then compact, then do C" is a plan: follow it exactly.
 
 - **Compact where the plan says,** whatever your context size, even below the first configured checkpoint. Ignore checkpoint notes while the plan runs; don't compact at points the plan doesn't name. The exception is the final configured safety checkpoint: if the model is approaching its actual automatic limit, compact at the next clean stopping point and tell the user why. Never assume an automatic limit of 970k on every model.
-- **Every compaction in the plan is a full one.** Do everything in "Before compacting" and "Steps" each time: background work, a full handoff, and the request with `--handoff` and `--then`.
+- **Every compaction in the plan is a full one.** Do everything in "Before compacting" and "Steps" each time: background work, a full handoff, and the request with `--handoff` and `--then` (or `--report` where the plan says to stop after compacting).
 - **The plan has to survive each compaction.** The summary can't be trusted to keep it, so carry it in the handoff (see "The user's plan" below). Make `--then` the plan's next step, for example: "Read the handoff, re-read its context files, then do B (step 3 of the user's plan); compact again when B is done."
 - **After the last step of the plan,** the checkpoints apply again, counted from your context size at that point.
 
@@ -75,14 +75,16 @@ The user's instructions about when to compact replace the checkpoints. For examp
 ## Steps
 
 1. **Write the handoff** (above).
-2. **Request it:** `selfcompact.py request --handoff "<handoff path>" --then "<what to do next>"`. You can add `--focus "<short note for the summary>"`.
+2. **Request it,** in one of two ways. Both go through the relay, which wakes you once the compaction is done; that restarts your process, so the user (including through Remote Control) can reach you again and knows whether it worked.
+   - **Compact and continue,** when there is more work you can do without the user: `selfcompact.py request --handoff "<handoff path>" --then "<what to do next>"`. The relay sends you `selfcompact relay: … Handoff: <path>. Continue: <what to do next>`, so you carry on without the user. Write it as an instruction to your future self, for example: "Read the handoff, re-read its context files, then continue with step 3 of the refactor."
+   - **Compact and report,** when the next step is the user's (questions to answer, work finished, a decision to make): `selfcompact.py request --handoff "<handoff path>" --report "<short status>"`. The relay wakes you, and you post one line: `Compaction complete. <status>`, or `Compaction failed (<reason>). <status>` if it didn't happen. Then you stop. Write the status for the user, in one or two sentences that say what they need to do, if anything. For example: "Please answer the two questions above and I'll continue with the troubleshooting." or "The fixes have been completed as asked."
+   - `--then` and `--report` can't be combined. You can add `--focus "<short note for the summary>"` to either.
    - `--handoff`: after compacting, you are told to read it first and to re-read the context files it lists.
-   - `--then`: once the compaction is done, the relay session sends you `selfcompact relay: … Handoff: <path>. Continue: <what to do next>`, so you carry on without the user. Write it as an instruction to your future self, for example: "Read the handoff, re-read its context files, then continue with step 3 of the refactor."
    - `--focus` is optional and becomes `/compact <focus>`. Keep it short; the details belong in the handoff.
    - `--keep <task id>` (repeatable) leaves that background shell command running; everything else is stopped. See "Before compacting", step 2.
 3. **Tell the user.**
-   - **With `--then`:** the request prints a relay job. Send it to the relay session with `send_message`, exactly as printed. Tell the user you will continue by yourself in about a minute, and that they need not reply.
-   - **Without `--then`:** tell the user the compaction takes about a minute, and to wait that long before sending the next message. A message sent earlier is answered from the full history, and the compaction goes unused.
+   - **With `--then` or `--report`:** the request prints a relay job. Send it to the relay session with `send_message`, exactly as printed. With `--then`, tell the user you will continue by yourself in about a minute and they need not reply. With `--report`, tell them you'll post "Compaction complete" in about a minute and to wait for it before replying; a message sent earlier is answered from the full history, and the compaction goes unused.
+   - **With neither** (only when you are the relay session, which can't message itself): nothing wakes you after compacting. Tell the user to wait about a minute, then open the chat in the desktop app or send a message there. Until then the session is stopped: Remote Control can't reach it, and no confirmation is posted.
 4. **End the turn.** Make the request (and the relay message) your last actions. To change your mind before the turn ends, run `selfcompact.py cancel`; the relay then gets NOTHING and stays quiet.
 5. **Mark the spot.** The user's view of the chat doesn't show where the compaction happened, so make this the last line of your final message, on its own line, exactly as written:
 
@@ -100,11 +102,11 @@ If your context starts with a compaction summary and a `selfcompact:` note, you 
 4. For a kept command, check on it yourself: it has finished once its process is gone, and its output is in the file the note names. The app may call it stopped or unfinished; the note is right. No notice comes when it ends, so check before you rely on its result, and stop it with `taskkill /PID <process> /T /F` if needed.
 5. Continue. If the handoff has a plan from the user, do its next step, and compact again where the plan says.
 
-A message from the relay session that starts with `selfcompact relay:` is the continuation you set up yourself with `--then`. The text after `Continue:` is what you wrote then; carry on with it without waiting for the user. `selfcompact.py status` shows whether self-compaction is on, the last checkpoint, the request, the worker's result and the log.
+A message from the relay session that starts with `selfcompact relay:` is the wake-up you set up yourself. If it has `Continue:`, the text after it is what you wrote then; carry on with it without waiting for the user. If it has `Report:`, answer with a single short message, `Compaction complete. <the report text>` (or `Compaction failed (<reason>). <the report text>` if it says the compaction did not happen), and end your turn. Don't read files or start other work first; read the handoff when the user next writes. `selfcompact.py status` shows whether self-compaction is on, the last checkpoint, the request, the worker's result and the log.
 
 ## If you are the relay
 
-The user has set one session up as the relay; its desktop session id is `relay_session` in `~/.claude/selfcompact/config.json`. The relay gets no checkpoint notes, and can't use `--then` for itself; the user clears it now and then. When another session sends you a message that starts with `selfcompact relay job`:
+The user has set one session up as the relay; its desktop session id is `relay_session` in `~/.claude/selfcompact/config.json`. The relay gets no checkpoint notes, and can't use `--then` or `--report` for itself; the user clears it now and then. When another session sends you a message that starts with `selfcompact relay job`:
 
 1. Run the command it gives with the Bash tool. It is always `python "<this script>" relay --session <id> --request <timestamp>`; run nothing else.
 2. Act on the output, exactly:
